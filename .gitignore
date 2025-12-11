@@ -137,3 +137,11 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Original
+.idea
+.node-version
+.auth.json
+*.har
+config/tasks.config.js
+package-lock.json
