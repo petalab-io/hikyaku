@@ -145,3 +145,4 @@ vite.config.ts.timestamp-*
 *.har
 config/tasks.config.js
 package-lock.json
+.ai-instructions

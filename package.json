@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "login": "node --env-file=.env login.js",
+    "har": "node --env-file=.env get_har.js"
   },
   "keywords": [],
   "author": "",
