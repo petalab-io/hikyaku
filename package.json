@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "login": "node --env-file=.env login.js",
-    "har": "node --env-file=.env get_har.js"
+    "get_har": "node --env-file=.env get_har.js"
   },
   "keywords": [],
   "author": "",

@@ -132,7 +132,7 @@ async function main() {
         now.getSeconds().toString().padStart(2, '0');
 
     const folderName = `GetHars_${folderTImestamp}`;
-    const outputDir = path.join(os.homedir(), 'Desktop', folderName);  // デスクトップのパスを取得して結合
+    const outputDir = path.join(__dirname, 'measures', folderName);  // Project Root directory を取得して path を結合
 
     // Harファイルの格納先フォルダの作成
     if (!fs.existsSync(outputDir)) {
