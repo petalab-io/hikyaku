@@ -1,0 +1,16 @@
+{
+  "name": "hikyaku",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "login": "node --env-file=.env login.js",
+    "get_har": "node --env-file=.env get_har.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "playwright": "^1.57.0"
+  }
+}
