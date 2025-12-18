@@ -34,16 +34,22 @@ const NETWORK_PRESET = networkConfig.network;
  * 【シナリオ定義】 ページごとの操作を記述します
  * ===========================================================================
  */
-async function runScenario(page, label, scenarioFile = null) {
+async function runScenario(page, label, scenarioFile = null, isFirstTask = false) {
     console.log(`    [操作] シナリオ: ${label} を実行中...`);
 
     // 初期待機: ページ読み込み後の基本待機
     try {
+        console.log('    [待機] SPA のデータ通信が完了するのを待機します...');
         await page.waitForLoadState('domcontentloaded');
 
-        console.log('    [待機] データ読み込みのため 15秒待機します...');
-        await page.waitForTimeout(15000);
+        // 初回 Task は固定待機を追加（Browser 起動直後の不安定さを吸収）
+        if (isFirstTask) {
+            console.log('    [待機]初回タスクのため追加で 5 秒待機します...')
+            await page.waitForTimeout(5000);
+        }
 
+        await page.waitForLoadState('networkidle', {timeout: 15000});
+        console.log('     [待機] 待機条件を満たしました。')
     } catch (e) {
         console.log('    [注意] 待機中にタイムアウトしましたが、処理を続行します。');
     }
@@ -169,6 +175,29 @@ async function main() {
             headless: false,
         });
 
+        // 【追加】初回 Dummy-task 実行（結果は保存しない）
+        console.log('[ブラウザ] 初回安定化のためダミーアクセスを実行中...')
+        try {
+            const dummyContext = await browser.newContext({
+                storageState: 'auth.json',
+                viewport: null
+            });
+            const dummyPage = await dummyContext.newPage();
+
+            // 最初の Task と同じ URL に Access して安定させる
+            const firstTaskUrl = TASKS[0].url || 'about:blank';
+            await dummyPage.goto(firstTaskUrl, {waitUntil: 'domcontentloaded'});
+
+            await dummyPage.waitForTimeout(5000);  // SPA が落ち着くまで少し待つ
+            await dummyContext.close();
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            console.log('[ブラウザ] ダミーアクセス完了。本番タスクを開始します。\n')
+        } catch (err) {
+            console.log(`[ブラウザ] ダミーアクセス中にエラー: ${err.message}`);
+            console.log('[ブラウザ] エラーを無視して続行します。');
+        }
+
         // 全 Iteration を loop
         for (let iteration = 0; iteration < TOTAL_ITERATIONS; iteration++) {
             console.log(`\n========== イテレーション ${iteration + 1} / ${TOTAL_ITERATIONS} ==========`);
@@ -201,7 +230,8 @@ async function main() {
                     // Access & Scenario 実行
                     console.log(`    [アクセス] ${task.url}`);
                     await page.goto(task.url);
-                    await runScenario(page, task.label, task.scenario);
+                    const isFirstTask = (iteration === 0 && taskIndex === 0);
+                    await runScenario(page, task.label, task.scenario, isFirstTask);
 
                     // Page-title を取得
                     let pageTitle = await page.title();

@@ -19,7 +19,7 @@ module.exports = {
         offline: false,
         downloadThroughput: (10 * 1024 * 1024) / 8, // 10 Mbps (ダウンロード速度)
         uploadThroughput: (10 * 1024 * 1024) / 8,   // 10 Mbps (アップロード速度)
-        latency: 10,                                 // 10ms (レイテンシ)
+        latency: 20,                                 // 10ms (レイテンシ)
     },
 
     // ========================================
