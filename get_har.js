@@ -1,7 +1,6 @@
 const {chromium} = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 /**
  * ===========================================================================
@@ -94,37 +93,6 @@ async function runScenario(page, label, scenarioFile = null, isFirstTask = false
     } catch (e) {
         console.log('    [完了待機] タイムアウトしましたが、処理を完了します。');
     }
-}
-
-/**
- * ===========================================================================
- * HAR ファイルの保存処理
- * ===========================================================================
- */
-async function saveHarFile(context, outputDir, task, iterationIndex) {
-    const harData = await context.request.storageState();
-
-    // Timestamp 生成
-    const now = new Date();
-    const filetimestamp = now.getFullYear().toString() +
-        (now.getMonth() + 1).toString().padStart(2, '0') +
-        now.getData().toString().padStart(2, '0') +
-        now.getHours().toString().padStart(2, '0') +
-        now.getMinutes().toString().padStart(2, '0') +
-        now.getSeconds().toString().padStart(2, '0');
-
-    const baseName = `${task.label}_${filetimestamp}`;
-    const safeBaseName = base.name.replace(/[\\/:*?"<>|]/g, '_');
-
-    let finalFilename = `${safeBaseName}.har`;
-    let safePath = path.join(outputDir, finalFilename);
-
-    if (fs.existsSync(finalPath)) {
-        finalFilename = `${safeBaseName}_${iterationIndex}.har`;
-        finalPath = path.join(outputDir, finalFilename);
-    }
-
-    return finalPath;
 }
 
 /**
@@ -266,13 +234,8 @@ async function main() {
 
                 } catch (err) {
                     console.error(`    -> エラー: ${err.message}`);
-                    if (context) {
-                        try {
-                            await context.close();
-                        } catch (e) {
-                            // 無視
-                        }
-                    }
+                    await context?.close().catch(() => {
+                    });
                 }
             }
         }
