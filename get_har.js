@@ -72,37 +72,18 @@ async function runScenario(page, label, scenarioFile = null) {
             case 'Test':
                 // 例: 特定要素の確認など
                 break;
-
-            // case 'SearchFlow':
-            //   // 例: スクロール操作
-            //   // await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-            //   break;
-
-            // case 'FormSubmit':
-            //   // 例: ボタンクリック
-            //   // await page.getByText('次へ').click();
-            //   // await page.waitForLoadState('networkidle');
-            //   break;
-
             default:
                 // 定義がない場合は共通待機のみで終了
                 break;
         }
     }
 
-    // ===================================================================
     // 【共通の完了待機処理】
-    // すべてのシナリオ（単体・複数ページ共通）で実行される
-    // 最後に表示されたページのDOMがすべて読み込み完了するまで待機
-    // ===================================================================
     console.log('    [完了待機] 最終ページのDOM読み込み完了を確認中...');
     try {
-        // DOMの読み込み完了を待つ
-        await page.waitForLoadState('domcontentloaded', {timeout: 10000});
 
-        // 追加: readyState が 'complete' になるまで待つ
-        await page.waitForFunction(() => document.readyState === 'complete', {timeout: 10000});
-
+        await page.waitForLoadState('domcontentloaded', {timeout: 10000}); // DOMの読み込み完了を待つ
+        await page.waitForFunction(() => document.readyState === 'complete', {timeout: 10000}); // 追加: readyState が 'complete' になるまで待つ
         console.log('    [完了待機] DOM読み込み完了を確認しました');
     } catch (e) {
         console.log('    [完了待機] タイムアウトしましたが、処理を完了します。');
@@ -111,11 +92,42 @@ async function runScenario(page, label, scenarioFile = null) {
 
 /**
  * ===========================================================================
+ * HAR ファイルの保存処理
+ * ===========================================================================
+ */
+async function saveHarFile(context, outputDir, task, iterationIndex) {
+    const harData = await context.request.storageState();
+
+    // Timestamp 生成
+    const now = new Date();
+    const filetimestamp = now.getFullYear().toString() +
+        (now.getMonth() + 1).toString().padStart(2, '0') +
+        now.getData().toString().padStart(2, '0') +
+        now.getHours().toString().padStart(2, '0') +
+        now.getMinutes().toString().padStart(2, '0') +
+        now.getSeconds().toString().padStart(2, '0');
+
+    const baseName = `${task.label}_${filetimestamp}`;
+    const safeBaseName = base.name.replace(/[\\/:*?"<>|]/g, '_');
+
+    let finalFilename = `${safeBaseName}.har`;
+    let safePath = path.join(outputDir, finalFilename);
+
+    if (fs.existsSync(finalPath)) {
+        finalFilename = `${safeBaseName}_${iterationIndex}.har`;
+        finalPath = path.join(outputDir, finalFilename);
+    }
+
+    return finalPath;
+}
+
+/**
+ * ===========================================================================
  * システム設定 (変更不要)
  * ===========================================================================
  */
 async function main() {
-    console.log('=== HAR取得 自動化スクリプト開始 (auth.json利用版) ===');
+    console.log('=== HAR取得 自動化スクリプト開始 (Browsr継続版) ===');
 
     // auth.json の存在チェック
     if (!fs.existsSync('auth.json')) {
@@ -132,7 +144,7 @@ async function main() {
         now.getMinutes().toString().padStart(2, '0') +
         now.getSeconds().toString().padStart(2, '0');
 
-    const folderName = `GetHars_${folderTImestamp}`;
+    const folderName = `get_hars_${folderTImestamp}`;
     const outputDir = path.join(__dirname, 'measures', folderName);  // Project Root directory を取得して path を結合
 
     // Harファイルの格納先フォルダの作成
@@ -142,84 +154,109 @@ async function main() {
     }
 
     console.log(`タスク数: ${TASKS.length} 件`);
-    console.log(`総実行回数: ${TOTAL_ITERATIONS} 回（ラウンドロビン方式）`);
+    console.log(`総イテレーション数: ${TOTAL_ITERATIONS} 回`);
     console.log('注意: 実行前に開いているChromeをすべて閉じてください。\n');
 
-    // ラウンドロビン方式で実行
-    for (let i = 0; i < TOTAL_ITERATIONS; i++) {
-        const taskIndex = i % TASKS.length;
-        const task = TASKS[taskIndex];
-        const roundNumber = Math.floor(i / TASKS.length) + 1;
+    let browser = null;
+    let page = null;
+    let client = null;
 
-        console.log(`\n--- 実行 ${i + 1} / ${TOTAL_ITERATIONS} (ラウンド ${roundNumber}, タスク: ${task.label}) ---`);
+    try {
+        // Browser を１回だけ起動
+        console.log('[ブラウザ]起動中...');
+        browser = await chromium.launch({
+            channel: 'chrome',
+            headless: false,
+        });
 
-        const tempFilename = path.join(outputDir, `temp_${task.label}_${i}.har`);
-        let browser = null;
-        let context = null;
+        // 全 Iteration を loop
+        for (let iteration = 0; iteration < TOTAL_ITERATIONS; iteration++) {
+            console.log(`\n========== イテレーション ${iteration + 1} / ${TOTAL_ITERATIONS} ==========`);
 
-        try {
-            // 1. ブラウザ起動
-            browser = await chromium.launch({
-                channel: 'chrome',
-                headless: false,
-            });
+            // 各 Task(Scenario) を loop
+            for (let taskIndex = 0; taskIndex < TASKS.length; taskIndex++) {
+                const task = TASKS[taskIndex];
+                const harFilePath = path.join(outputDir, `temp_${task.label}_iter${iteration}_task${taskIndex}.har`);
 
-            // 2. コンテキスト作成時に auth.json を読み込む
-            context = await browser.newContext({
-                recordHar: {path: tempFilename},
-                storageState: 'auth.json',
-                viewport: null
-            });
+                console.log(`\n--- タスク ${taskIndex + 1} / ${TASKS.length}: ${task.label} ---`);
 
-            const page = await context.newPage();
+                let context = null;
 
-            // 3. CDPセッション作成
-            const client = await context.newCDPSession(page);
-            await client.send('Network.setCacheDisabled', {cacheDisabled: DISABLE_CACHE});
-            await client.send('Network.emulateNetworkConditions', NETWORK_PRESET);
+                try {
+                    // Scenario ごとに新しい Context を作成（HAR記録 Reset）
+                    console.log('    [コンテキスト] 新規作成（HAR 記録 リセット）...');
+                    context = await browser.newContext({
+                        recordHar: {path: harFilePath},
+                        storageState: 'auth.json',
+                        viewport: null
+                    });
 
-            // 4. アクセス & シナリオ
-            await page.goto(task.url);
-            await runScenario(page, task.label, task.scenario);
+                    page = await context.newPage();
 
-            // 5. 保存処理
-            let pageTitle = await page.title();
-            let safeTitle = pageTitle.replace(/[^a-zA-Z0-9 \-_]/g, '').trim() || 'NoTitle';
+                    // CDP-Session 作成
+                    client = await context.newCDPSession(page);
+                    await client.send('Network.setCacheDisabled', {cacheDisabled: DISABLE_CACHE});
+                    await client.send('Network.emulateNetworkConditions', NETWORK_PRESET);
 
-            await context.close();
-            await browser.close();
-            context = null;
-            browser = null;
+                    // Access & Scenario 実行
+                    console.log(`    [アクセス] ${task.url}`);
+                    await page.goto(task.url);
+                    await runScenario(page, task.label, task.scenario);
 
-            // リネーム
-            const now2 = new Date();
-            const filetimestamp = now2.getFullYear().toString() +
-                (now2.getMonth() + 1).toString().padStart(2, '0') +
-                now2.getDate().toString().padStart(2, '0') +
-                now2.getHours().toString().padStart(2, '0') +
-                now2.getMinutes().toString().padStart(2, '0') +
-                now2.getSeconds().toString().padStart(2, '0');
+                    // Page-title を取得
+                    let pageTitle = await page.title();
+                    let safeTitle = pageTitle.replace(/[^a-zA-Z0-9\-_]/g, '').trim() || 'NoTitle';  // スペースも除去
 
-            const baseName = `${task.label}_${safeTitle}_${filetimestamp}`;
-            const safeBaseName = baseName.replace(/[\\/:*?"<>|]/g, '_');
+                    // Context を閉じて HAR を保存
+                    await context.close();
+                    context = null;
 
-            let finalFilename = `${safeBaseName}.har`;
-            let finalPath = path.join(outputDir, finalFilename);
+                    // File を Rename
+                    const now2 = new Date();
+                    const filetimestamp = now2.getFullYear().toString() +
+                        (now2.getMonth() + 1).toString().padStart(2, '0') +
+                        now2.getDate().toString().padStart(2, '0') +
+                        now2.getHours().toString().padStart(2, '0') +
+                        now2.getMinutes().toString().padStart(2, '0') +
+                        now2.getSeconds().toString().padStart(2, '0');
 
-            if (fs.existsSync(finalPath)) {
-                finalFilename = `${safeBaseName}_${i}.har`;
-                finalPath = path.join(outputDir, finalFilename);
+                    const baseName = `${task.label}_${safeTitle}_iter${iteration + 1}_${filetimestamp}`;
+                    const safeBaseName = baseName.replace(/[\\/:*?"<>|]/g, '_');
+
+                    let finalFilename = `${safeBaseName}.har`;
+                    let finalPath = path.join(outputDir, finalFilename);
+
+                    if (fs.existsSync(finalPath)) {
+                        finalFilename = `${safeBaseName}_${taskIndex}.har`;
+                        finalPath = path.join(outputDir, finalFilename);
+                    }
+
+                    fs.renameSync(harFilePath, finalPath);
+                    console.log(`    -> 保存完了: ${path.basename(finalPath)}`);
+
+                } catch (err) {
+                    console.error(`    -> エラー: ${err.message}`);
+                    if (context) {
+                        try {
+                            await context.close();
+                        } catch (e) {
+                            // 無視
+                        }
+                    }
+                }
             }
-
-            fs.renameSync(tempFilename, finalPath);
-            console.log(`    -> 保存完了: ${path.basename(finalPath)}`);
-
-        } catch (err) {
-            console.error(`    -> エラー: ${err.message}`);
-            if (context) await context.close();
-            if (browser) await browser.close();
+        }
+    } catch
+        (err) {
+        console.error(`致命的エラー: ${err.message}`);
+    } finally {
+        // 最後に Browser を閉じる
+        if (browser) {
+            console.log(`\n[ブラウザ] 終了中...`);
+            await browser.close();
         }
     }
+
     console.log(`\n=== すべてのタスクが完了しました（保存先: ${outputDir}） ===`);
 }
 
