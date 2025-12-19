@@ -3,7 +3,7 @@
 
 このガイドでは、実際のブラウザ操作から自動実行可能なシナリオを作成する方法を説明します。
 
-## :ロケット: 初回セットアップ
+## 初回セットアップ
 
 初めて使う場合は、以下の手順でセットアップしてください：
 
@@ -13,15 +13,23 @@
 ファイル内にサンプルコードがコメントで記載されています。
 
 ### 2. タスクを設定
-
-サンプルを参考に、実際のタスクを記述してください。
-
-**重要**: このファイルは `.gitignore` に登録されているため、実際のURLを記載してもgit管理されません。安全に使用できます。
+```javascript
+// config/tasks.config.js
+module.exports = {
+  totalIterations: 3,  // 全シナリオを3回繰り返し実行
+  tasks: [
+    {
+      label: 'scenario_01',
+      url: 'https://example.com',
+      scenario: 'my_scenario.js'  // シナリオファイル名
+    },
+  ],
+};
+```
 
 ---
 
-## :クリップボード: 全体の流れ
-
+## 全体の流れ
 ```
 1. ブラウザ操作を記録する (record_scenario.js を実行)
    ↓
@@ -29,15 +37,12 @@
    ↓
 3. scenarios/ フォルダにシナリオファイルを作成
    ↓
-4. tasks.config.js でシナリオを指定
+4. config/tasks.config.js でシナリオを指定
    ↓
-5. get_har.js を実行
+5. npm run get_har を実行
 ```
 
----
-
-## :カチンコ: ステップ1: ブラウザ操作を記録する
-
+## ステップ１: ブラウザ操作を記録する
 ### 1-1. 記録ツールを起動
 
 コマンドプロンプトで以下を実行:
@@ -73,7 +78,7 @@ node record_scenario.js
 
 ---
 
-## :メモ: ステップ2: シナリオファイルを作成
+## ステップ2: シナリオファイルを作成
 
 ### 2-1. scenarios フォルダに新しいファイルを作成
 
@@ -148,7 +153,7 @@ module.exports = async function(page) {
 };
 ```
 
-#### :チェックマーク_緑: よく使う待機方法
+#### よく使う待機方法
 
 ```javascript
 // DOM の読み込みを待つ（推奨）
@@ -166,7 +171,7 @@ await page.waitForTimeout(3000); // 3秒待機
 
 ---
 
-## :ロケット: ステップ3: config/tasks.config.js でシナリオを設定
+## ステップ3: config/tasks.config.js でシナリオを設定
 
 ### 3-1. config/tasks.config.js を開く
 
@@ -177,43 +182,33 @@ await page.waitForTimeout(3000); // 3秒待機
 ```javascript
 // config/tasks.config.js
 module.exports = {
-  disableCache: true,
+    // 全シナリオを順繰りに実行する総回数
+    totalIterations: 3,
 
-  network: {
-    offline: false,
-    downloadThroughput: (10 * 1024 * 1024) / 8,
-    uploadThroughput: (10 * 1024 * 1024) / 8,
-    latency: 10,
-  },
-
-  tasks: [
-    {
-      label: 'LoginFlow',                 // タスク名
-      url: 'https://example.com/login',   // 開始URL
-      count: 3,                           // 実行回数
-      scenario: 'login_flow.js'           // 作成したシナリオファイル名
-    },
-    {
-      label: 'SearchTest',
-      url: 'https://example.com',
-      count: 2,
-      scenario: 'search_and_click.js'
-    },
-  ],
+    tasks: [
+        {
+            label: 'LoginFlow',                 // タスク名
+            url: 'https://example.com/login',   // 開始URL
+            scenario: 'login_flow.js'           // 作成したシナリオファイル名
+        },
+        {
+            label: 'SearchTest',
+            url: 'https://example.com',
+            scenario: 'search_and_click.js'
+        },
+    ],
 };
 ```
-
-**重要**: `config/tasks.config.js` は `.gitignore` に登録されているため、実際のURLを記載してもgit管理されません。
 
 ### 3-3. スクリプトを実行
 
 ```bash
-node get_har.js
+npm run get_har
 ```
 
 ---
 
-## :複数の本: シナリオサンプル集
+## シナリオサンプル集
 
 ### サンプル1: ログインして情報を閲覧
 
@@ -322,7 +317,7 @@ module.exports = async function(page) {
 
 ---
 
-## :レンチ: トラブルシューティング
+## トラブルシューティング
 
 ### :x: 「要素が見つかりません」エラー
 
@@ -356,7 +351,7 @@ await page.click('button');
 
 ---
 
-## :電球: ヒント
+## ヒント
 
 1. **小さく始める**: 最初は1-2ステップの簡単なシナリオから始めましょう
 2. **こまめに待機**: ページ遷移やボタンクリック後は必ず待機を入れる
@@ -365,7 +360,7 @@ await page.click('button');
 
 ---
 
-## :受話器: サポート
+## サポート
 
 問題が発生した場合は、以下の情報を添えて相談してください:
 - エラーメッセージ

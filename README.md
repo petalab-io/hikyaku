@@ -10,39 +10,54 @@ Playwright を使用して、複数ページに渡る操作を含むシナリオ
 npm install
 ```
 
-### 2. タスク設定ファイルの作成
+### 2. 環境変数の設定
 
-`config/tasks.config.js` ファイルが存在しない場合は作成してください。
-ファイル内にサンプルコードがコメントで記載されています。
+`.env` ファイルを作成し、ログイン対象の URL を設定してください。
 
-```javascript
-// config/tasks.config.js
-module.exports = {
-  tasks: [
-    // サンプルを参考に、実際のタスクを記述してください
-    {
-      label: 'MyTask',                    // タスク名
-      url: 'https://example.com',         // 開始URL
-      count: 3,                           // 実行回数
-      scenario: 'my_scenario.js'          // シナリオファイル（オプション）
-    },
-  ],
-};
+```bash
+ # .env
+ LOGIN_URL=https://example.com
 ```
 
-**重要**: `config/tasks.config.js` は `.gitignore` に登録されているため、実際のURLを記載してもgit管理されません。
-
-### 3. ネットワーク設定の調整（オプション）
+### 3. タスク設定ファイルの作成
 
 必要に応じて `config/network.config.js` を編集してキャッシュやネットワーク帯域制限を変更できます。
 デフォルト設定で問題ない場合は編集不要です。
 
-### 4. ログイン状態の保存（必要な場合）
+```javascript
+// config/tasks.config.js
+module.exports = {
+    // 全シナリオを順繰りに実行する総回数
+    totalIterations: 3,
+
+    tasks: [
+        {
+            label: 'scenario_01',
+            url: 'https://www.sample.app',
+        },
+        {
+            label: 'scenario_02',
+            url: 'https:/www.sample.app/1',
+        },
+        {
+            label: 'scenario_03',
+            url: 'https://samples/nextnext',
+        },
+    ],
+};
+```
+
+### 4. ネットワーク設定の調整（オプション）
+
+必要に応じて `config/network.config.js` を編集してキャッシュやネットワーク帯域制限を変更できます。
+デフォルト設定で問題ない場合は編集不要です。
+
+### 5. ログイン状態の保存（必要な場合）
 
 ログインが必要なサイトの場合：
 
 ```bash
-node login.js
+npm run login
 ```
 
 ブラウザが開くので、手動でログインしてください。ログイン状態が `auth.json` に保存されます。
@@ -56,19 +71,16 @@ node login.js
 指定したURLにアクセスして待機するだけの場合：
 
 ```javascript
-// tasks.config.js
-tasks: [
-  {
-    label: 'SimpleTest',
-    url: 'https://example.com',
-    count: 3,
-    // scenarioを指定しない
-  },
-]
+ // config/tasks.config.js
+module.exports = { 
+    totalIterations: 3, // 3回繰り返し実行
+    tasks: [
+    ], 
+};
 ```
 
 ```bash
-node get_har.js
+npm run get_har
 ```
 
 ### シナリオを使った使い方（複数ページ操作）
@@ -88,13 +100,13 @@ node record_scenario.js
 `scenarios/my_scenario.js` を作成：
 
 ```javascript
-module.exports = async function(page) {
-  // Inspector からコピーしたコードを貼り付け
-  await page.getByRole('button', { name: '検索' }).click();
-  await page.waitForLoadState('domcontentloaded');
+module.exports = async function (page) {
+    // Inspector からコピーしたコードを貼り付け
+    await page.getByRole('button', {name: '検索'}).click();
+    await page.waitForLoadState('domcontentloaded');
 
-  await page.getByRole('link', { name: '次のページ' }).click();
-  await page.waitForLoadState('domcontentloaded');
+    await page.getByRole('link', {name: '次のページ'}).click();
+    await page.waitForLoadState('domcontentloaded');
 };
 ```
 
@@ -103,19 +115,18 @@ module.exports = async function(page) {
 ```javascript
 // tasks.config.js
 tasks: [
-  {
-    label: 'SearchFlow',
-    url: 'https://example.com',
-    count: 3,
-    scenario: 'my_scenario.js'  // :左向き指差し: シナリオを指定
-  },
+    {
+        label: 'SearchFlow',
+        url: 'https://example.com',
+        scenario: 'my_scenario.js'  //  シナリオを指定
+    },
 ]
 ```
 
 #### ステップ4: 実行
 
 ```bash
-node get_har.js
+npm run get_har
 ```
 
 ---
@@ -129,13 +140,14 @@ har-automation/
 ├── record_scenario.js      # シナリオ記録用
 │
 ├── config/                 # 設定ファイル専用
-│   ├── tasks.config.js         # タスク設定（gitignore対象、サンプル内蔵）
-│   └── network.config.js       # ネットワーク設定（git管理）
+│   ├── tasks.config.js         # タスク設定
+│   └── network.config.js       # ネットワーク設定
 │
 ├── scenarios/              # シナリオファイル格納フォルダ
 │   ├── sample_scenario.js  # サンプルシナリオ
 │   └── your_scenario.js    # 独自のシナリオ
 │
+├── .env                    # 環境変数(gitignore対象)
 ├── auth.json               # ログイン状態（gitignore対象）
 ├── SCENARIO_GUIDE.md       # シナリオ作成ガイド
 └── README.md               # このファイル
@@ -154,9 +166,9 @@ har-automation/
 
 以下のファイルは `.gitignore` に登録されており、git管理されません：
 
-- `config/tasks.config.js` - 実際のURL設定
+- `.env` - 環境変数
 - `auth.json` - ログイン状態
-- `*.har` - 取得したHARファイル
+- `measures/*` - 取得したHARファイル
 
 **重要**: これらのファイルには機密情報が含まれる可能性があるため、共有しないでください。
 
@@ -166,6 +178,10 @@ har-automation/
 
 ### キャッシュ設定
 
+```
+disableCache: true  // true: キャッシュ無効, false: キャッシュ有効
+```
+
 ```javascript
 disableCache: true  // true: キャッシュ無効, false: キャッシュ有効
 ```
@@ -174,29 +190,44 @@ disableCache: true  // true: キャッシュ無効, false: キャッシュ有効
 
 ```javascript
 network: {
-  offline: false,                              // オフラインモード
-  downloadThroughput: (10 * 1024 * 1024) / 8,  // ダウンロード速度 (Bps)
-  uploadThroughput: (10 * 1024 * 1024) / 8,    // アップロード速度 (Bps)
-  latency: 10,                                 // レイテンシ (ms)
+    offline: false,                              // オフラインモード
+        downloadThroughput
+:
+    (10 * 1024 * 1024) / 8,  // ダウンロード速度 (Bps)
+        uploadThroughput
+:
+    (10 * 1024 * 1024) / 8,    // アップロード速度 (Bps)
+        latency
+:
+    10,                                 // レイテンシ (ms)
 }
 ```
 
 ### タスク設定
 
-| プロパティ | 説明 | 必須 |
-|----------|------|------|
-| `label` | タスク名（ファイル名に使用） | :チェックマーク_緑: |
-| `url` | 開始URL | :チェックマーク_緑: |
-| `count` | 実行回数 | :チェックマーク_緑: |
-| `scenario` | シナリオファイル名 | :x: |
+| プロパティ              | 説明                | 必須          |
+|--------------------|-------------------|-------------|
+| `totalIterations`  | 全シナリオを順繰りに実行する総回数 | ✅ |
+| `tasks[].label`    | タスク名（ファイル名に使用）    | ✅ |
+| `tasks[].url`      | 開始URL             | ✅ |
+| `tasks[].scenario` | シナリオファイル名         | ❌         |
+
+---
+
+## npm scripts
+
+コマンド | 説明
+--- | ---
+`npm run login` | ログイン状態を保存
+`npm run get_har` | HAR ファイルを取得
 
 ---
 
 ## Tips
 
 1. **非エンジニア向け**: `config/tasks.config.js` だけ編集すれば使えます
-2. **複数環境**: 環境ごとに異なる `config/tasks.config.js` を用意できます
-3. **CI/CD**: 環境変数から設定を読み込むことも可能です
+2. **複数環境**: 環境ごとに異なる  `env`と `config/tasks.config.js` を用意できます
+3. *イテレーション:*: `totalIterations` で全シナリオを複数回実行できます
 
 ---
 
