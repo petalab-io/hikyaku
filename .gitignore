@@ -143,7 +143,6 @@ vite.config.ts.timestamp-*
 .node-version
 auth.json
 *.har
-config/tasks.config.js
 package-lock.json
 .ai-instructions
 measures/*
